@@ -65,6 +65,28 @@
       <updated>1669318138854</updated>
       <workItem from="1669318140131" duration="11004000" />
     </task>
+    <task id="LOCAL-00001" summary="add structures">
+      <created>1669330241208</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1669330241208</updated>
+    </task>
+    <task id="LOCAL-00002" summary="add structures">
+      <created>1669330408634</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1669330408634</updated>
+    </task>
+    <task id="LOCAL-00003" summary="add structures">
+      <created>1669330451836</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1669330451836</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -80,5 +102,9 @@
         </entry>
       </map>
     </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add structures" />
+    <option name="LAST_COMMIT_MESSAGE" value="add structures" />
   </component>
 </project>
