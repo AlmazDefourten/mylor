@@ -1,7 +1,7 @@
 package ru.vshpit.model;
 
 public enum SpecialQuiz {
-    START_QUIZ(1); //default 1, if first run
+    START_QUIZ(1); //default 1, set before start bot in initializationQuiz()
 
     private int idQuiz;
 

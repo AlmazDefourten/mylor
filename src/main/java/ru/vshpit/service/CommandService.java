@@ -143,7 +143,11 @@ public class CommandService {
                             "where step="+stepId+" and\n" +
                             "quizid=(select currentquizid from userquiz where chatid="+chatId+"))");
                     if(resultSet.next()){
-                        sendMessage.setText(resultSet.getString("resultText"));
+                        String resultText=resultSet.getString("resultText");
+                        if(resultText.equals("")){
+                            return getMessage("quizId:"+quizId+"/stepId:"+stepId);
+                        };
+                        sendMessage.setText(resultText);
                         sendMessage.setReplyMarkup(KeyBoardService.getNextQuestion(quizId,stepId));
                     }else{
                         sendMessage.setText("Вы нажали не туда)");
