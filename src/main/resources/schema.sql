@@ -1,3 +1,6 @@
+drop table if exists quizAnswer;
+drop table if exists quizQuestion;
+drop table if exists quiz;
 CREATE TABLE if not exists userQuiz
 (
     chatId                 int,
@@ -26,6 +29,6 @@ CREATE TABLE if not exists quizAnswer(
     quizQuestionId int references quizQuestion (id) not null,
     answerText varchar(250) not null,
     resultText varchar(250) not null,
-    isCorrectAnswer boolean not null
+    isCorrectAnswer boolean not null default false
 );
 UPDATE userquiz set nextstepquizquestionid=null,currentquizid=null;

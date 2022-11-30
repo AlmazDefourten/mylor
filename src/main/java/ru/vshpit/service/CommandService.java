@@ -86,17 +86,26 @@ public class CommandService {
                         e.printStackTrace();
                         throw new RuntimeException(e);
                     }
-                    sendMessage.setText("Опрос окончен");
+                    sendMessage.setText("Вы завершили опрос!");
                 }
             } else {
                 sendMessage.setText("Вы нажали не туда)");
             }
 
-        } else {
+        }
+        /*else if (hasCurrentQuiz()){
+            sendMessage.setText("Вы нажали не туда)");
+        }*/
+        else {
             if (message.equals(Commands.START.getCommand())) {
                 answerMessage = startMessage();
                 sendMessage.setText(answerMessage);
-            } else if (message.equals(Commands.WANT_QUIZ_START.getCommand())) {
+                sendMessage.setReplyMarkup(KeyBoardService.wantStartTest());
+            } else if (message.equals(Commands.PASSED_QUIZ_START)){
+                answerMessage="В разработке";
+                sendMessage.setText(answerMessage);
+            }
+            else if (message.equals(Commands.WANT_QUIZ_START.getCommand())) {
                 Database database = new Database();
                 Connection connection = database.getConnection();
                 int stepId = 0;
@@ -153,10 +162,30 @@ public class CommandService {
     }
 
     private String startMessage() {
-        return "Приветсвую тебя";
+        return "Привет! Предлагаю пройти небольшой опрос, хочешь?";
     }
 
     private String listOfCommands() {
         return "Список доступных команд: /start";
+    }
+
+    private boolean hasCurrentQuiz(){
+        Database database=new Database();
+        Connection connection=database.getConnection();
+        try {
+            Statement statement=connection.createStatement();
+            ResultSet resultSet= statement.executeQuery("select count(chatid)\n" +
+                    "from userquiz where chatid="+chatId+" and nextstepquizquestionid is null and currentquizid is null;");
+            if(resultSet.next()){
+                if(resultSet.getInt("count")==1){
+                    return false;
+                }else{
+                    return true;
+                }
+            }
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        return false;
     }
 }

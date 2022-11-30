@@ -1,7 +1,7 @@
 package ru.vshpit.model;
 
 public enum SpecialQuiz {
-    START_QUIZ(1);
+    START_QUIZ(1); //default 1, if first run
 
     private int idQuiz;
 
@@ -11,5 +11,9 @@ public enum SpecialQuiz {
 
     public int getIdQuiz() {
         return idQuiz;
+    }
+
+    public void setIdQuiz(int idQuiz) {
+        this.idQuiz = idQuiz;
     }
 }

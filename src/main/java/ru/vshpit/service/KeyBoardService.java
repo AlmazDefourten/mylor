@@ -40,7 +40,6 @@ public class KeyBoardService {
     public static InlineKeyboardMarkup getNextVariablesOfAnswer(int quizId, int stepId) throws SQLException {
         InlineKeyboardMarkup inlineKeyboardMarkup=new InlineKeyboardMarkup();
         List<List<InlineKeyboardButton>> keyboard=new ArrayList<>();
-        List<InlineKeyboardButton> keyboardButtonsRow = new ArrayList<>();
         Database database=new Database();
         Connection connection=database.getConnection();
         Statement statement=connection.createStatement();
@@ -48,13 +47,14 @@ public class KeyBoardService {
                 "(SELECT id FROM quizquestion where step="+stepId+" and quizid="+quizId+") order by id";
         ResultSet resultSet=statement.executeQuery(query);
         while ((resultSet.next())){
+            List<InlineKeyboardButton> keyboardButtonsRow = new ArrayList<>();
             InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
             inlineKeyboardButton.setText(resultSet.getString("answerText"));
             inlineKeyboardButton.setCallbackData("quizId:"+quizId+"/stepId:"+stepId+"/answerId:"+resultSet.getInt("id"));
             System.out.println("quizId:"+quizId+"/stepId:"+stepId+"/answerId:"+resultSet.getInt("id"));
             keyboardButtonsRow.add(inlineKeyboardButton);
+            keyboard.add(keyboardButtonsRow);
         }
-        keyboard.add(keyboardButtonsRow);
         inlineKeyboardMarkup.setKeyboard(keyboard);
         return inlineKeyboardMarkup;
     }
@@ -64,9 +64,29 @@ public class KeyBoardService {
         List<List<InlineKeyboardButton>> keyboard=new ArrayList<>();
         List<InlineKeyboardButton> keyboardButtonsRow = new ArrayList<>();
         InlineKeyboardButton inlineKeyboardButton = new InlineKeyboardButton();
-        inlineKeyboardButton.setText("Следующий вопрос");
+        inlineKeyboardButton.setText("Далее");
         inlineKeyboardButton.setCallbackData("quizId:"+quizId+"/stepId:"+stepId);
         keyboardButtonsRow.add(inlineKeyboardButton);
+        keyboard.add(keyboardButtonsRow);
+        inlineKeyboardMarkup.setKeyboard(keyboard);
+        return inlineKeyboardMarkup;
+    }
+
+    public static InlineKeyboardMarkup wantStartTest(){
+        InlineKeyboardMarkup inlineKeyboardMarkup=new InlineKeyboardMarkup();
+        List<List<InlineKeyboardButton>> keyboard=new ArrayList<>();
+        List<InlineKeyboardButton> keyboardButtonsRow = new ArrayList<>();
+
+        InlineKeyboardButton inlineKeyboardButton1 = new InlineKeyboardButton();
+        inlineKeyboardButton1.setText("Да");
+        inlineKeyboardButton1.setCallbackData(Commands.WANT_QUIZ_START.getCommand());
+        InlineKeyboardButton inlineKeyboardButton2 = new InlineKeyboardButton();
+        inlineKeyboardButton2.setText("Я уже проходил");
+        inlineKeyboardButton2.setCallbackData(Commands.PASSED_QUIZ_START.getCommand());
+
+        keyboardButtonsRow.add(inlineKeyboardButton1);
+        keyboardButtonsRow.add(inlineKeyboardButton2);
+
         keyboard.add(keyboardButtonsRow);
         inlineKeyboardMarkup.setKeyboard(keyboard);
         return inlineKeyboardMarkup;
