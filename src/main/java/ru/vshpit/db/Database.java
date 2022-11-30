@@ -9,13 +9,17 @@ import java.sql.SQLException;
 import java.util.Properties;
 
 public class Database {
-    private static Connection connection=InitConnection();
 
-    public static Connection getConnection(){
+    private Connection  connection;
+
+    public Connection getConnection(){
+        if(connection==null){
+            InitConnection();
+        }
         return connection;
     }
 
-    private static Connection InitConnection(){
+    private Connection InitConnection(){
         Properties properties=new Properties();
         try {
             properties.load(Application.class.getClassLoader().getResourceAsStream("database.properties"));
