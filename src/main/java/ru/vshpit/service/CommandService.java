@@ -86,10 +86,10 @@ public class CommandService {
                         e.printStackTrace();
                         throw new RuntimeException(e);
                     }
-                    sendMessage.setText("Вы завершили опрос!");
+                    sendMessage.setText("Вы завершили диагностику, уделите особое внимание рекомендациям которые мы вам дали");
                 }
             } else {
-                sendMessage.setText("Вы нажали не туда)");
+                sendMessage.setText("Вы нажали не туда");
             }
 
         }
@@ -150,7 +150,7 @@ public class CommandService {
                         sendMessage.setText(resultText);
                         sendMessage.setReplyMarkup(KeyBoardService.getNextQuestion(quizId,stepId));
                     }else{
-                        sendMessage.setText("Вы нажали не туда)");
+                        sendMessage.setText("Вы нажали не туда");
                     }
                     connection.close();
                 } catch (SQLException e) {
@@ -166,11 +166,11 @@ public class CommandService {
     }
 
     private String startMessage() {
-        return "Привет! Предлагаю пройти небольшой опрос, хочешь?";
+        return "Мы подготовили для тебя экспресс-диагностику дыхания, хочешь пройти её?";
     }
 
     private String listOfCommands() {
-        return "Список доступных команд: /start";
+        return "Привет! Чтобы начать введите команду /start";
     }
 
     private boolean hasCurrentQuiz(){
