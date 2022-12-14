@@ -46,24 +46,12 @@ public class TelegramBot extends TelegramLongPollingBot {
         return botToken;
     }
 
-    /*@Override
-    public void onUpdateReceived(Update update) {
-        String message=getMessage(update.getMessage());
-        SendMessage sendMessage=new SendMessage();
-        sendMessage.setChatId(update.getMessage().getChatId());
-        sendMessage.setText(message);
-        System.out.println(message);
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }*/
     @Override
     public void onUpdateReceived(Update update) {
     if(update.hasCallbackQuery() && update.getCallbackQuery().getData()!=null){
             CallbackQuery callbackQuery=update.getCallbackQuery();
-            System.out.println("Message with callback"+callbackQuery.getData());
+            System.out.println("Message with callback: "+callbackQuery.getData());
+            addNewChatIdInDatabase(callbackQuery.getMessage().getChatId());
             SendMessage sendMessage=getSendMessage(callbackQuery.getData(),update.getCallbackQuery().getMessage().getChatId());
             sendMessage.setChatId(update.getCallbackQuery().getMessage().getChatId());
             try {
@@ -74,7 +62,7 @@ public class TelegramBot extends TelegramLongPollingBot {
         }else if(update.getMessage()!=null && update.getMessage().getText()!=null){
             System.out.println("Message "+update.getMessage().getText());
             addNewChatIdInDatabase(update.getMessage().getChatId());
-            SendMessage sendMessage=getSendMessage(update.getMessage(),update.getMessage().getChatId());
+            SendMessage sendMessage=getSendMessage(update.getMessage());
 //            sendMessage.setReplyMarkup(KeyBoardService.getStartMenu());
             sendMessage.setChatId(update.getMessage().getChatId());
 //            sendMessage.setReplyMarkup(inlineKeyboardMarkup);
@@ -89,6 +77,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     }
 
+    //инициализируем пользователя в бд
     private void addNewChatIdInDatabase(long chatId){
         Database database=new Database();
         Connection connection=database.getConnection();
@@ -104,9 +93,10 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
 
-    private SendMessage getSendMessage(Message message, long chatId){
-        CommandService commandService=new CommandService(chatId);
-        return commandService.getMessage(message.getText());
+    private SendMessage getSendMessage(Message message){
+//        CommandService commandService=new CommandService(message.getChatId());
+//        return commandService.getMessage(message.getText());
+        return getSendMessage(message.getText(),message.getChatId());
     }
     private SendMessage getSendMessage(String message, long chatId){
         CommandService commandService=new CommandService(chatId);

@@ -3,9 +3,10 @@ drop table if exists quizQuestion;
 drop table if exists quiz;
 CREATE TABLE if not exists userQuiz
 (
-    chatId                 int,
+    chatId                 bigint,
     currentQuizId          int,
     nextStepQuizQuestionId int,
+    has_send_email boolean default false not null ,
     primary key (chatId)
 );
 
@@ -31,4 +32,4 @@ CREATE TABLE if not exists quizAnswer(
     resultText varchar(250) not null,
     isCorrectAnswer boolean not null default false
 );
-UPDATE userquiz set nextstepquizquestionid=null,currentquizid=null;
+UPDATE userquiz set nextstepquizquestionid=null,currentquizid=null,has_send_email=false;

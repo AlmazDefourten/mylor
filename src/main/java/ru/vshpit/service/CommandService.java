@@ -1,9 +1,14 @@
 package ru.vshpit.service;
 
+import org.checkerframework.checker.units.qual.C;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import ru.vshpit.db.Database;
 import ru.vshpit.model.Commands;
+import ru.vshpit.model.ConstantMessage;
 import ru.vshpit.model.SpecialQuiz;
 
 import javax.xml.crypto.Data;
@@ -25,7 +30,7 @@ public class CommandService {
     public SendMessage getMessage(String message) {
         String answerMessage = listOfCommands();
         SendMessage sendMessage = new SendMessage();
-        if (message.matches(Commands.NEXT_QUESTION_QUIZ.getCommand())) {
+        if (message.matches(Commands.NEXT_QUESTION_QUIZ.getCommand())) { //получить следующий вопрос
             System.out.println(message);
             String parameters[] = message.split("/");
             Map<String, Integer> ids = new HashMap<>();
@@ -34,7 +39,6 @@ public class CommandService {
             }
             int quizId = ids.get("quizId");
             int stepId = ids.get("stepId");
-//            int answerId = ids.get("answerId");
             Database database = new Database();
             Connection connection = database.getConnection();
             boolean hasNext = false;
@@ -45,7 +49,7 @@ public class CommandService {
                         "from userquiz where chatid=" + chatId + " and not nextstepquizquestionid is null and currentquizid=" + quizId + ";");
                 statement = connection.createStatement();
                 ResultSet resultSet = statement.executeQuery("SELECT count(id) FROM quizquestion" +
-                        " where step=" + (stepId + 1) + " and quizid=" + SpecialQuiz.START_QUIZ.getIdQuiz());
+                        " where step=" + (stepId + 1) + " and quizid=" + quizId);
                 if (resultSetForCheckStep.next()) {
                     int checkStepId = resultSetForCheckStep.getInt("nextStepQuizQuestionId");
                     if (checkStepId == stepId) {
@@ -61,13 +65,12 @@ public class CommandService {
                 }
             } catch (SQLException e) {
                 e.printStackTrace();
-                throw new RuntimeException(e);
             }
             if (isCorrectMessage) {
                 if (hasNext) {
                     try {
                         Statement statement = connection.createStatement();
-                        ResultSet resultSet = statement.executeQuery("SELECT * FROM quizquestion where step=" + (stepId + 1));
+                        ResultSet resultSet = statement.executeQuery("SELECT * FROM quizquestion where step=" + (stepId + 1) + " and quizid=" + quizId);
                         if (resultSet.next()) {
                             sendMessage.setText(resultSet.getString("questionText"));
                             statement.close();
@@ -76,7 +79,7 @@ public class CommandService {
                         }
                         sendMessage.setReplyMarkup(KeyBoardService.getNextVariablesOfAnswer(quizId, stepId + 1));
                     } catch (SQLException e) {
-                        throw new RuntimeException(e);
+                        e.printStackTrace();
                     }
                 } else {
                     try {
@@ -84,80 +87,160 @@ public class CommandService {
                         statement.execute("update userquiz SET nextstepquizquestionid=null,currentquizid=null where chatid=" + chatId);
                     } catch (SQLException e) {
                         e.printStackTrace();
-                        throw new RuntimeException(e);
+                        e.printStackTrace();
                     }
-                    sendMessage.setText("Вы завершили диагностику, уделите особое внимание рекомендациям которые мы вам дали");
+                    sendMessage.setText(ConstantMessage.END_DIAGNOSTIC.getMessage());
+                    sendMessage.setReplyMarkup(KeyBoardService.lookOtherDiagnosticOrResult(quizId));
                 }
             } else {
-                sendMessage.setText("Вы нажали не туда");
+                sendMessage.setText(ConstantMessage.UNCORRECTED_MESSAGE.getMessage());
             }
 
+        } else if (message.matches(Commands.NEXT_STEP_QUIZ.getCommand())) { //Получить ответ на вопрос
+            String parameters[] = message.split("/");
+            Map<String, Integer> ids = new HashMap<>();
+            for (String parameter : parameters) {
+                ids.put(parameter.split(":")[0], Integer.parseInt(parameter.split(":")[1]));
+            }
+            int quizId = ids.get("quizId");
+            int stepId = ids.get("stepId");
+            int answerId = ids.get("answerId");
+            Database database = new Database();
+            Connection connection = database.getConnection();
+            try {
+                Statement statement = connection.createStatement();
+                String query = "SELECT * from quizanswer where id=" + answerId + " and \n" +
+                        "quizquestionid=(select id from quizquestion\n" +
+                        "where step=" + stepId + " and\n" +
+                        "quizid=(select currentquizid from userquiz where chatid=" + chatId + " and (nextstepquizquestionid=" + (stepId) + " or (nextstepquizquestionid =1 and " + (stepId - 1) + "=0))))";
+                System.out.println(query);
+                ResultSet resultSet = statement.executeQuery(query);
+                if (resultSet.next()) {
+                    String resultText = resultSet.getString("resultText");
+                    if (resultText.equals("")) {
+                        return getMessage("quizId:" + quizId + "/stepId:" + stepId);
+                    }
+                    sendMessage.setText(resultText);
+                    sendMessage.setReplyMarkup(KeyBoardService.getNextQuestion(quizId, stepId));
+                } else {
+                    sendMessage.setText(ConstantMessage.UNCORRECTED_MESSAGE.getMessage());
+                }
+                connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
         /*else if (hasCurrentQuiz()){
             sendMessage.setText("Вы нажали не туда)");
         }*/
         else {
-            if (message.equals(Commands.START.getCommand())) {
+            if (message.equals(Commands.START.getCommand())) { // команда /start
                 answerMessage = startMessage();
                 sendMessage.setText(answerMessage);
                 sendMessage.setReplyMarkup(KeyBoardService.wantStartTest());
-            } else if (message.equals(Commands.PASSED_QUIZ_START)){
-                answerMessage="В разработке";
-                sendMessage.setText(answerMessage);
-            }
-            else if (message.equals(Commands.WANT_QUIZ_START.getCommand())) {
+            } else if (message.equals(Commands.PASSED_QUIZ_START.getCommand())) { //кнопка уже проходил диагностику
+                sendMessage.setText(ConstantMessage.WANT_OTHER_QUIZS.getMessage());
+                sendMessage.setReplyMarkup(KeyBoardService.seeOtherQuizs());
+                return sendMessage;
+            } else if (message.equals(Commands.WANT_QUIZ_START.getCommand())) { //кнопка начать стартовый опрос
+                System.out.println("входит в want quiz");
                 Database database = new Database();
                 Connection connection = database.getConnection();
                 int stepId = 0;
                 try {
                     Statement statement = connection.createStatement();
+                    System.out.println("update userquiz\n" +
+                            "set currentquizid =" + SpecialQuiz.START_QUIZ.getIdQuiz() + ",nextstepquizquestionid=" + (stepId + 1) + "" +
+                            " where chatid=" + chatId + ";");
                     statement.execute("update userquiz\n" +
                             "set currentquizid =" + SpecialQuiz.START_QUIZ.getIdQuiz() + ",nextstepquizquestionid=" + (stepId + 1) + "" +
                             " where chatid=" + chatId + ";");
                     sendMessage.setReplyMarkup(KeyBoardService.getNextVariablesOfAnswer(SpecialQuiz.START_QUIZ.getIdQuiz(),
                             stepId));
-                    ResultSet resultSet = statement.executeQuery("SELECT * FROM quizquestion where step=" + (stepId + 1));
+                    ResultSet resultSet = statement.executeQuery("SELECT * FROM quizquestion where step=" + (stepId + 1) + " and quizid=" + SpecialQuiz.START_QUIZ.getIdQuiz());
                     if (resultSet.next()) {
                         sendMessage.setText(resultSet.getString("questionText"));
                     }
                     sendMessage.setReplyMarkup(KeyBoardService.getNextVariablesOfAnswer(SpecialQuiz.START_QUIZ.getIdQuiz(),
                             stepId + 1));
                 } catch (SQLException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
                 }
-            } else if (message.matches(Commands.NEXT_STEP_QUIZ.getCommand())) {
-                String parameters[] = message.split("/");
+            } else if (message.equals(Commands.WANT_DIAGNOSTICS.getCommand())) { //хочу пройти дигностику
+                sendMessage.setReplyMarkup(KeyBoardService.listDiagnostic());
+                sendMessage.setText(ConstantMessage.CHOOSE_DIAGNOSTIC.getMessage());
+                return sendMessage;
+            } else if (message.matches(Commands.WANT_OTHER_QUIZ.getCommand())) { //кнопка начать опрос по id
+                String parameters[] = message.replace("/wantOtherQuiz/", "").split("/");
                 Map<String, Integer> ids = new HashMap<>();
                 for (String parameter : parameters) {
                     ids.put(parameter.split(":")[0], Integer.parseInt(parameter.split(":")[1]));
                 }
                 int quizId = ids.get("quizId");
-                int stepId = ids.get("stepId");
-                int answerId = ids.get("answerId");
+                Database database = new Database();
+                Connection connection = database.getConnection();
+                int stepId = 0;
+                try {
+                    Statement statement = connection.createStatement();
+                    statement.execute("update userquiz\n" +
+                            "set currentquizid =" + quizId + ",nextstepquizquestionid=" + (stepId + 1) + "" +
+                            " where chatid=" + chatId + ";");
+                    sendMessage.setReplyMarkup(KeyBoardService.getNextVariablesOfAnswer(quizId,
+                            stepId));
+                    ResultSet resultSet = statement.executeQuery("SELECT * FROM quizquestion where step=" + (stepId + 1) + " and quizid=" + quizId);
+                    if (resultSet.next()) {
+                        sendMessage.setText(resultSet.getString("questionText"));
+                    }
+                    sendMessage.setReplyMarkup(KeyBoardService.getNextVariablesOfAnswer(quizId,
+                            stepId + 1));
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            } else if (message.equals(Commands.SEE_OTHER_QUIZ.getCommand())) { //посмотреть список других опросов
+                InlineKeyboardMarkup inlineKeyboardMarkup = KeyBoardService.wantTakeOtherTests();
+                if (inlineKeyboardMarkup.getKeyboard().size() == 0) {
+                    sendMessage.setText(ConstantMessage.DONT_HAS_QUIZS.getMessage());
+                } else {
+                    sendMessage.setText(ConstantMessage.LIST_OF_QUIZS.getMessage());
+                    sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+                }
+                return sendMessage;
+            } else if (message.equals(Commands.LOOK_RESULT.getCommand())) {
+                sendMessage.setText("Оставьте ваши контакты и мы свяжемся с вами, также можете указать способ связи (telegram, звонок), укажите всё в одном сообщении");
                 Database database = new Database();
                 Connection connection = database.getConnection();
                 try {
                     Statement statement = connection.createStatement();
-                    ResultSet resultSet = statement.executeQuery("SELECT * from quizanswer where id="+answerId+" and \n" +
-                            "quizquestionid=(select id from quizquestion\n" +
-                            "where step="+stepId+" and\n" +
-                            "quizid=(select currentquizid from userquiz where chatid="+chatId+"))");
-                    if(resultSet.next()){
-                        String resultText=resultSet.getString("resultText");
-                        if(resultText.equals("")){
-                            return getMessage("quizId:"+quizId+"/stepId:"+stepId);
-                        };
-                        sendMessage.setText(resultText);
-                        sendMessage.setReplyMarkup(KeyBoardService.getNextQuestion(quizId,stepId));
-                    }else{
-                        sendMessage.setText("Вы нажали не туда");
-                    }
+                    statement.execute("update userquiz set has_send_email=true where chatid="+chatId);
                     connection.close();
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
-            } else {
-                sendMessage.setText(answerMessage);
+            } else { //иначе получить ответ на вопрос(зависит от состояния в бд) либо отправить answerMessage(инициализируется в начале, либо в условиях)
+                Database database = new Database();
+                Connection connection = database.getConnection();
+                boolean hasMessage=false;
+                try {
+                    Statement statement = connection.createStatement();
+                    ResultSet resultSet=statement.executeQuery("select * from userquiz where chatid="+chatId);
+                    if(resultSet.next()){
+                        hasMessage=resultSet.getBoolean("has_send_email");
+                        statement=connection.createStatement();
+                        statement.execute("update userquiz set has_send_email=false where chatid="+chatId);
+                        statement.close();
+                    }
+                    connection.close();
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+
+                if (hasMessage) {
+                    //todo сделать приём номера телефона и отправка по email
+                    sendMessage.setText("Сообщение отправлено: "+message);
+                    return sendMessage;
+                } else {
+                    sendMessage.setText(answerMessage);
+                }
             }
         }
 
@@ -166,29 +249,29 @@ public class CommandService {
     }
 
     private String startMessage() {
-        return "Мы подготовили для тебя экспресс-диагностику дыхания, хочешь пройти её?";
+        return ConstantMessage.GREETING.getMessage();
     }
 
     private String listOfCommands() {
-        return "Привет! Чтобы начать введите команду /start";
+        return ConstantMessage.TEXT_FOR_START_BUTTON.getMessage();
     }
 
-    private boolean hasCurrentQuiz(){
-        Database database=new Database();
-        Connection connection=database.getConnection();
+    private boolean hasCurrentQuiz() {
+        Database database = new Database();
+        Connection connection = database.getConnection();
         try {
-            Statement statement=connection.createStatement();
-            ResultSet resultSet= statement.executeQuery("select count(chatid)\n" +
-                    "from userquiz where chatid="+chatId+" and nextstepquizquestionid is null and currentquizid is null;");
-            if(resultSet.next()){
-                if(resultSet.getInt("count")==1){
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery("select count(chatid)\n" +
+                    "from userquiz where chatid=" + chatId + " and nextstepquizquestionid is null and currentquizid is null;");
+            if (resultSet.next()) {
+                if (resultSet.getInt("count") == 1) {
                     return false;
-                }else{
+                } else {
                     return true;
                 }
             }
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return false;
     }

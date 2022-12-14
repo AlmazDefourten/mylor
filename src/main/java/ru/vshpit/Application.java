@@ -9,6 +9,7 @@ import ru.vshpit.bot.TelegramBot;
 import ru.vshpit.db.Database;
 import ru.vshpit.model.Commands;
 import ru.vshpit.model.SpecialQuiz;
+import ru.vshpit.service.EmailService;
 import ru.vshpit.service.KeyBoardService;
 
 import javax.management.Query;
@@ -23,12 +24,16 @@ import java.util.Properties;
 import java.util.Scanner;
 
 public class Application {
-    public static void main(String[] args) throws SQLException {
-        initializationSqlSchema();
-        initializationQuiz();
-        initializationBot();
+    public static void main(String[] args){
+//        initializationSqlSchema();
+//        initializationQuiz();
+//        initializationBot();
+        EmailService emailService=new EmailService();
+        emailService.initialization();
+        emailService.testSendMessage();
     }
 
+    //спарсить опросы в бд из quizs.xml
     private static void initializationQuiz(){;
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         try {
@@ -53,7 +58,7 @@ public class Application {
                             quizId=resultSet.getInt("currval");
                         }
                         if(element.hasAttribute("isMain")){
-                            SpecialQuiz.START_QUIZ.setIdQuiz(quizId);
+                            SpecialQuiz.START_QUIZ.setIdQuiz(quizId);  //установить id стартового опроса, по дефолту 1 (Обязательно!!!)
                         }
                         NodeList listQuestion=element.getElementsByTagName("question");
                         for(int y=0;y<listQuestion.getLength();y++){
@@ -97,6 +102,7 @@ public class Application {
         }
     }
 
+    //создать(пересоздать) базовые таблицы и обновить данные
     private static void initializationSqlSchema(){
         try {
             Scanner scanner = new Scanner(Application.class.getClassLoader().getResourceAsStream("schema.sql"));
@@ -117,6 +123,7 @@ public class Application {
 
     }
 
+    //запустить тг бота
     private static void initializationBot(){
         Properties properties = new Properties();
         try {
