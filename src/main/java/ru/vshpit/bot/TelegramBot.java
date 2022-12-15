@@ -20,6 +20,7 @@ import ru.vshpit.service.CommandService;
 import ru.vshpit.service.KeyBoardService;
 
 import java.sql.Connection;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -27,13 +28,16 @@ import java.util.List;
 import java.util.Stack;
 
 public class TelegramBot extends TelegramLongPollingBot {
-
+    private static TelegramBot telegramBot;
     private String botUserName;
     private String botToken;
+    private static String passwordAdmin;
 
-    public TelegramBot(String botUserName, String botToken) {
+    public TelegramBot(String botUserName, String botToken, String passwordAdmin) {
         this.botUserName = botUserName;
         this.botToken = botToken;
+        this.passwordAdmin = passwordAdmin;
+        telegramBot = this;
     }
 
     @Override
@@ -46,35 +50,23 @@ public class TelegramBot extends TelegramLongPollingBot {
         return botToken;
     }
 
-    /*@Override
-    public void onUpdateReceived(Update update) {
-        String message=getMessage(update.getMessage());
-        SendMessage sendMessage=new SendMessage();
-        sendMessage.setChatId(update.getMessage().getChatId());
-        sendMessage.setText(message);
-        System.out.println(message);
-        try {
-            execute(sendMessage);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
-        }
-    }*/
     @Override
     public void onUpdateReceived(Update update) {
-    if(update.hasCallbackQuery() && update.getCallbackQuery().getData()!=null){
-            CallbackQuery callbackQuery=update.getCallbackQuery();
-            System.out.println("Message with callback"+callbackQuery.getData());
-            SendMessage sendMessage=getSendMessage(callbackQuery.getData(),update.getCallbackQuery().getMessage().getChatId());
+        if (update.hasCallbackQuery() && update.getCallbackQuery().getData() != null) {
+            CallbackQuery callbackQuery = update.getCallbackQuery();
+            System.out.println("Message with callback: " + callbackQuery.getData());
+            addNewChatIdInDatabase(callbackQuery.getMessage().getChatId());
+            SendMessage sendMessage = getSendMessage(callbackQuery.getData(), update.getCallbackQuery().getMessage().getChatId());
             sendMessage.setChatId(update.getCallbackQuery().getMessage().getChatId());
             try {
                 execute(sendMessage);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
             }
-        }else if(update.getMessage()!=null && update.getMessage().getText()!=null){
-            System.out.println("Message "+update.getMessage().getText());
+        } else if (update.getMessage() != null && update.getMessage().getText() != null) {
+            System.out.println("Message " + update.getMessage().getText());
             addNewChatIdInDatabase(update.getMessage().getChatId());
-            SendMessage sendMessage=getSendMessage(update.getMessage(),update.getMessage().getChatId());
+            SendMessage sendMessage = getSendMessage(update.getMessage());
 //            sendMessage.setReplyMarkup(KeyBoardService.getStartMenu());
             sendMessage.setChatId(update.getMessage().getChatId());
 //            sendMessage.setReplyMarkup(inlineKeyboardMarkup);
@@ -83,19 +75,38 @@ public class TelegramBot extends TelegramLongPollingBot {
                 execute(sendMessage);
             } catch (TelegramApiException e) {
                 e.printStackTrace();
-                throw new RuntimeException();
             }
         }
 
     }
 
-    private void addNewChatIdInDatabase(long chatId){
-        Database database=new Database();
-        Connection connection=database.getConnection();
+    public static void sendPhoneNumber(String message) {
+        Database database = new Database();
+        Connection connection = database.getConnection();
+        try (Statement statement = connection.createStatement()) {
+            ResultSet resultSet = statement.executeQuery("select * from userquiz where is_admin=true");
+            while (resultSet.next()) {
+                long chatId = resultSet.getLong("chatId");
+                SendMessage sendMessage = new SendMessage();
+                sendMessage.setText("У вас новое сообщение:\n" + message);
+                sendMessage.setChatId(chatId);
+                telegramBot.execute(sendMessage);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
+    }
+
+    //инициализируем пользователя в бд
+    private void addNewChatIdInDatabase(long chatId) {
+        Database database = new Database();
+        Connection connection = database.getConnection();
         try {
-            Statement statement=connection.createStatement();
-            String query="insert into userQuiz (chatId, currentQuizId, nextStepQuizQuestionId)" +
-                    " values ("+chatId+",null,null) on conflict (chatId) do nothing ;";
+            Statement statement = connection.createStatement();
+            String query = "insert into userQuiz (chatId, currentQuizId, nextStepQuizQuestionId)" +
+                    " values (" + chatId + ",null,null) on conflict (chatId) do nothing ;";
             statement.execute(query);
             connection.close();
         } catch (SQLException e) {
@@ -104,13 +115,17 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
 
-    private SendMessage getSendMessage(Message message, long chatId){
-        CommandService commandService=new CommandService(chatId);
-        return commandService.getMessage(message.getText());
+    private SendMessage getSendMessage(Message message) {
+        return getSendMessage(message.getText(), message.getChatId());
     }
-    private SendMessage getSendMessage(String message, long chatId){
-        CommandService commandService=new CommandService(chatId);
+
+    private SendMessage getSendMessage(String message, long chatId) {
+        CommandService commandService = new CommandService(chatId);
         return commandService.getMessage(message);
+    }
+
+    public static boolean checkAdminPassword(String passwordAdmin) {
+        return passwordAdmin.equals(TelegramBot.passwordAdmin);
     }
 
     public void botConnect() {

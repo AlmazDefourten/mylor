@@ -7,9 +7,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import ru.vshpit.bot.TelegramBot;
 import ru.vshpit.db.Database;
-import ru.vshpit.model.Commands;
 import ru.vshpit.model.SpecialQuiz;
-import ru.vshpit.service.KeyBoardService;
 
 import javax.management.Query;
 import javax.xml.parsers.DocumentBuilder;
@@ -23,12 +21,13 @@ import java.util.Properties;
 import java.util.Scanner;
 
 public class Application {
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args){
         initializationSqlSchema();
         initializationQuiz();
         initializationBot();
     }
 
+    //спарсить опросы в бд из quizs.xml
     private static void initializationQuiz(){;
         DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
         try {
@@ -53,7 +52,7 @@ public class Application {
                             quizId=resultSet.getInt("currval");
                         }
                         if(element.hasAttribute("isMain")){
-                            SpecialQuiz.START_QUIZ.setIdQuiz(quizId);
+                            SpecialQuiz.START_QUIZ.setIdQuiz(quizId);  //установить id стартового опроса, по дефолту 1 (Обязательно!!!)
                         }
                         NodeList listQuestion=element.getElementsByTagName("question");
                         for(int y=0;y<listQuestion.getLength();y++){
@@ -97,6 +96,7 @@ public class Application {
         }
     }
 
+    //создать(пересоздать) базовые таблицы и обновить данные
     private static void initializationSqlSchema(){
         try {
             Scanner scanner = new Scanner(Application.class.getClassLoader().getResourceAsStream("schema.sql"));
@@ -117,13 +117,15 @@ public class Application {
 
     }
 
+    //запустить тг бота
     private static void initializationBot(){
         Properties properties = new Properties();
         try {
             properties.load(Application.class.getClassLoader().getResourceAsStream("telegrambot.properties"));
             String botName=properties.getProperty("bot.name");
             String botToken=properties.getProperty("bot.token");
-            TelegramBot telegramBot=new TelegramBot(botName,botToken);
+            String botAdminPassword=properties.getProperty("bot.admin.password");
+            TelegramBot telegramBot=new TelegramBot(botName,botToken,botAdminPassword);
             telegramBot.botConnect();
             System.out.println("telegram bot запущен");
         } catch (IOException e) {
