@@ -6,6 +6,7 @@ import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import ru.vshpit.bot.TelegramBot;
 import ru.vshpit.db.Database;
 import ru.vshpit.model.Commands;
 import ru.vshpit.model.ConstantMessage;
@@ -31,7 +32,6 @@ public class CommandService {
         String answerMessage = listOfCommands();
         SendMessage sendMessage = new SendMessage();
         if (message.matches(Commands.NEXT_QUESTION_QUIZ.getCommand())) { //получить следующий вопрос
-            System.out.println(message);
             String parameters[] = message.split("/");
             Map<String, Integer> ids = new HashMap<>();
             for (String parameter : parameters) {
@@ -58,7 +58,6 @@ public class CommandService {
                 }
                 if (resultSet.next()) {
                     int count = resultSet.getInt("count");
-                    System.out.println(count);
                     if (count == 1) {
                         hasNext = true;
                     }
@@ -113,7 +112,6 @@ public class CommandService {
                         "quizquestionid=(select id from quizquestion\n" +
                         "where step=" + stepId + " and\n" +
                         "quizid=(select currentquizid from userquiz where chatid=" + chatId + " and (nextstepquizquestionid=" + (stepId) + " or (nextstepquizquestionid =1 and " + (stepId - 1) + "=0))))";
-                System.out.println(query);
                 ResultSet resultSet = statement.executeQuery(query);
                 if (resultSet.next()) {
                     String resultText = resultSet.getString("resultText");
@@ -143,15 +141,11 @@ public class CommandService {
                 sendMessage.setReplyMarkup(KeyBoardService.seeOtherQuizs());
                 return sendMessage;
             } else if (message.equals(Commands.WANT_QUIZ_START.getCommand())) { //кнопка начать стартовый опрос
-                System.out.println("входит в want quiz");
                 Database database = new Database();
                 Connection connection = database.getConnection();
                 int stepId = 0;
                 try {
                     Statement statement = connection.createStatement();
-                    System.out.println("update userquiz\n" +
-                            "set currentquizid =" + SpecialQuiz.START_QUIZ.getIdQuiz() + ",nextstepquizquestionid=" + (stepId + 1) + "" +
-                            " where chatid=" + chatId + ";");
                     statement.execute("update userquiz\n" +
                             "set currentquizid =" + SpecialQuiz.START_QUIZ.getIdQuiz() + ",nextstepquizquestionid=" + (stepId + 1) + "" +
                             " where chatid=" + chatId + ";");
@@ -211,32 +205,58 @@ public class CommandService {
                 Connection connection = database.getConnection();
                 try {
                     Statement statement = connection.createStatement();
-                    statement.execute("update userquiz set has_send_email=true where chatid="+chatId);
+                    statement.execute("update userquiz set has_send_email=true where chatid=" + chatId);
                     connection.close();
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
+            } else if (message.equals(Commands.DELETE_ME_ADMIN.getCommand())) {
+                Database database = new Database();
+                Connection connection = database.getConnection();
+                try (Statement statement = connection.createStatement()) {
+                    statement.execute("update userquiz set is_admin=false where chatid=" + chatId);
+                    connection.close();
+                    sendMessage.setText("Вы отписались от рассылки");
+                    return sendMessage;
+                } catch (SQLException e) {
+                    throw new RuntimeException(e);
+                }
+            } else if (message.matches(Commands.SET_ME_ADMIN.getCommand())) {
+                String password = message.substring(message.lastIndexOf(":") + 1);
+                if (TelegramBot.checkAdminPassword(password)) {
+                    Database database = new Database();
+                    Connection connection = database.getConnection();
+                    try (Statement statement = connection.createStatement()) {
+                        statement.execute("update userquiz set is_admin=true where chatid=" + chatId);
+                        connection.close();
+                        sendMessage.setText("Вы подписались на рассылку!");
+                        return sendMessage;
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                }
             } else { //иначе получить ответ на вопрос(зависит от состояния в бд) либо отправить answerMessage(инициализируется в начале, либо в условиях)
                 Database database = new Database();
                 Connection connection = database.getConnection();
-                boolean hasMessage=false;
+                boolean hasMessage = false;
                 try {
                     Statement statement = connection.createStatement();
-                    ResultSet resultSet=statement.executeQuery("select * from userquiz where chatid="+chatId);
-                    if(resultSet.next()){
-                        hasMessage=resultSet.getBoolean("has_send_email");
-                        statement=connection.createStatement();
-                        statement.execute("update userquiz set has_send_email=false where chatid="+chatId);
+                    ResultSet resultSet = statement.executeQuery("select * from userquiz where chatid=" + chatId);
+                    if (resultSet.next()) {
+                        hasMessage = resultSet.getBoolean("has_send_email");
+                        statement = connection.createStatement();
+                        statement.execute("update userquiz set has_send_email=false where chatid=" + chatId);
                         statement.close();
                     }
                     connection.close();
                 } catch (SQLException e) {
-                    throw new RuntimeException(e);
+                    e.printStackTrace();
                 }
 
                 if (hasMessage) {
                     //todo сделать приём номера телефона и отправка по email
-                    sendMessage.setText("Сообщение отправлено: "+message);
+                    sendMessage.setText("Сообщение успешно отправлено: " + message);
+                    TelegramBot.sendPhoneNumber(message);
                     return sendMessage;
                 } else {
                     sendMessage.setText(answerMessage);

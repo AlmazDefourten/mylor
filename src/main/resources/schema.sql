@@ -7,6 +7,7 @@ CREATE TABLE if not exists userQuiz
     currentQuizId          int,
     nextStepQuizQuestionId int,
     has_send_email boolean default false not null ,
+    is_admin boolean default false not null,
     primary key (chatId)
 );
 

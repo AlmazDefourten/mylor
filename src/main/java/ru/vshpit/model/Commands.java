@@ -9,7 +9,9 @@ public enum Commands {
     SEE_OTHER_QUIZ("/seeOtherQuiz"),
     WANT_DIAGNOSTICS("/wantDiagnostics"),
     LOOK_RESULT("/lookResult"),
-    WANT_OTHER_QUIZ("/wantOtherQuiz/quizId:\\d*");
+    WANT_OTHER_QUIZ("/wantOtherQuiz/quizId:\\d*"),
+    DELETE_ME_ADMIN("/deleteMeAdmin"),
+    SET_ME_ADMIN("/setMeAdmin/password:\\d*");
 
     private String command;
 

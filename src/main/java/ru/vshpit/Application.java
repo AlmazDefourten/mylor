@@ -7,10 +7,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 import ru.vshpit.bot.TelegramBot;
 import ru.vshpit.db.Database;
-import ru.vshpit.model.Commands;
 import ru.vshpit.model.SpecialQuiz;
-import ru.vshpit.service.EmailService;
-import ru.vshpit.service.KeyBoardService;
 
 import javax.management.Query;
 import javax.xml.parsers.DocumentBuilder;
@@ -25,12 +22,9 @@ import java.util.Scanner;
 
 public class Application {
     public static void main(String[] args){
-//        initializationSqlSchema();
-//        initializationQuiz();
-//        initializationBot();
-        EmailService emailService=new EmailService();
-        emailService.initialization();
-        emailService.testSendMessage();
+        initializationSqlSchema();
+        initializationQuiz();
+        initializationBot();
     }
 
     //спарсить опросы в бд из quizs.xml
@@ -130,7 +124,8 @@ public class Application {
             properties.load(Application.class.getClassLoader().getResourceAsStream("telegrambot.properties"));
             String botName=properties.getProperty("bot.name");
             String botToken=properties.getProperty("bot.token");
-            TelegramBot telegramBot=new TelegramBot(botName,botToken);
+            String botAdminPassword=properties.getProperty("bot.admin.password");
+            TelegramBot telegramBot=new TelegramBot(botName,botToken,botAdminPassword);
             telegramBot.botConnect();
             System.out.println("telegram bot запущен");
         } catch (IOException e) {
